@@ -17,6 +17,12 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
 
+COOKIES_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cookies.txt')
+
+if not os.path.exists(COOKIES_FILE):
+    with open(COOKIES_FILE, 'w') as f:
+        f.write("")
+
 # Attempt to import Request for custom timeout configuration.
 try:
     from telegram.request import Request
@@ -36,6 +42,8 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     ydl_opts = {
         'format': 'best',
+        'cache-dir': CACHE_DIR,
+        'cookies': COOKIES_FILE,
         'outtmpl': os.path.join(download_path, f'{url_hash}.%(ext)s'),
         'noplaylist': True,
         'progress_hooks': [progress_hook] if progress_hook else [],
