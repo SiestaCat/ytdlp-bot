@@ -11,6 +11,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 # Load .env file variables
 load_dotenv()  # New line
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # New token retrieval
+PROXY_URL = os.getenv("PROXY_URL")  # New token retrieval
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 
@@ -48,6 +49,9 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         'noplaylist': True,
         'progress_hooks': [progress_hook] if progress_hook else [],
     }
+    if PROXY_URL:
+        ydl_opts['proxy'] = PROXY_URL
+        
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
