@@ -3,9 +3,14 @@ import os
 import asyncio
 import yt_dlp
 import hashlib
+from dotenv import load_dotenv  # New import
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Load .env file variables
+load_dotenv()  # New line
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # New token retrieval
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 
@@ -71,8 +76,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     loop
                 )
 
-        # Create a temporary directory to store the downloaded video.
-        
         try:
             # Run the blocking download function in a separate thread.
             file_path = await asyncio.to_thread(download_video, text, CACHE_DIR, progress_hook)
@@ -92,12 +95,16 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Main function to set up and run the bot.
 def main():
+    if not TELEGRAM_TOKEN:
+        logger.error("TELEGRAM_TOKEN is not set. Please check your environment or .env file.")
+        return
+
     if custom_request_available:
         # Create a custom Request with a longer read timeout (in seconds).
         req = Request(con_pool_size=8, read_timeout=300)
-        application = ApplicationBuilder().token("").request(req).build()
+        application = ApplicationBuilder().token(TELEGRAM_TOKEN).request(req).build()
     else:
-        application = ApplicationBuilder().token("").build()
+        application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     # Register command and message handlers.
     application.add_handler(CommandHandler("start", start))
