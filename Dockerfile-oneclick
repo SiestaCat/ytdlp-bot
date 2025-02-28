@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir python-telegram-bot yt-dlp python-dotenv
 
 # Copy the rest of the application code
-RUN curl -o telegram-bot.py https://gist.githubusercontent.com/SiestaCat/c380b655c8bed5522a6287dd7a51936d/raw/e4b23a368ccff365b918617398499d086a000285/telegram-yt-dlp-bot.py
+RUN curl -o telegram-bot.py https://raw.githubusercontent.com/SiestaCat/ytdlp-bot/refs/heads/main/telegram-bot.py
 
 # Command to run the application
 CMD ["python", "telegram-bot.py"]
