@@ -131,9 +131,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         os.makedirs(photo_dir, exist_ok=True)
         progress_msg = await update.message.reply_text("Downloading photo gallery, please wait...")
         try:
+            # Construir argumentos para gallery-dl incluyendo COOKIES_FROM_BROWSER si está definido.
+            gallery_args = []
+            if COOKIES_FROM_BROWSER:
+                gallery_args.extend(["--cookies-from-browser", COOKIES_FROM_BROWSER])
+            # Usar '-d' para definir el directorio de descarga.
+            gallery_args.extend(["-d", photo_dir, url])
             # Ejecuta gallery-dl en un hilo aparte.
-            # Se usa la opción "-o" para definir el directorio de salida.
-            await asyncio.to_thread(gallery_main.main, ["-o", photo_dir, url])
+            await asyncio.to_thread(gallery_main.main, gallery_args)
         except SystemExit:
             # gallery-dl puede llamar a sys.exit, lo capturamos para continuar.
             pass
@@ -162,7 +167,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await uploading_msg.edit_text("Upload complete.")
     elif text == 'ip':
         try:
-            # Run the blocking yt-dlp IP retrieval function in a separate thread.
+            # Ejecuta la función de obtención de IP en un hilo aparte.
             ip_address = await asyncio.to_thread(get_ip_with_yt_dlp)
             await update.message.reply_text(f"Your IP address is: {ip_address}")
         except Exception as e:
@@ -172,7 +177,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         progress_msg = await update.message.reply_text("Downloading video: 0%")
         loop = asyncio.get_running_loop()
 
-        # Define the progress hook para yt-dlp.
+        # Define el progress hook para yt-dlp.
         def progress_hook(d):
             status = d.get('status')
             if status == 'downloading':
