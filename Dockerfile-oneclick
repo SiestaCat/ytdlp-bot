@@ -5,8 +5,11 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
+# Copy the rest of the application code
+RUN curl -o requirements.txt https://raw.githubusercontent.com/SiestaCat/ytdlp-bot/refs/heads/main/requirements.txt
+
 # Install the dependencies
-RUN pip install --no-cache-dir python-telegram-bot yt-dlp python-dotenv
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
 RUN curl -o telegram-bot.py https://raw.githubusercontent.com/SiestaCat/ytdlp-bot/refs/heads/main/telegram-bot.py

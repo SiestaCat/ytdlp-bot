@@ -3,6 +3,7 @@ import os
 import asyncio
 import yt_dlp
 import hashlib
+import aiohttp
 from dotenv import load_dotenv  # New import
 
 from telegram import Update
@@ -11,12 +12,16 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 # Load .env file variables
 load_dotenv()  # New line
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # New token retrieval
-PROXY_URL = os.getenv("PROXY_URL")  # New token retrieval
+PROXY_URL = os.getenv("PROXY_URL")
+GET_IP_URL = os.getenv("GET_IP_URL")
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
+
+if not GET_IP_URL:
+    GET_IP_URL = "https://wtfismyip.com/text"
 
 COOKIES_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cookies.txt')
 
@@ -64,7 +69,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # Message handler: responds to video links by downloading and uploading the video.
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text
-    if "http" in text:
+    if text == 'ip':
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(GET_IP_URL) as response:
+                    ip_address = await response.text()
+            await update.message.reply_text(f"Your IP address is: {ip_address.strip()}")
+        except Exception as e:
+            await update.message.reply_text("Failed to retrieve IP: " + str(e))
+    elif "http" in text:
         # Create a message for download progress updates.
         progress_msg = await update.message.reply_text("Downloading video: 0%")
         loop = asyncio.get_running_loop()
