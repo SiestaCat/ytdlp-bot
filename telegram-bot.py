@@ -166,14 +166,21 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         uploading_msg = await update.message.reply_text("Uploading photos, please wait...")
-        # Enviar cada foto al usuario.
-        for photo_file in photo_files:
-            file_path = os.path.join(photo_dir, photo_file)
-            try:
-                with open(file_path, 'rb') as photo:
-                    await update.message.reply_photo(photo=photo)
-            except Exception as e:
-                await update.message.reply_text(f"Failed to send photo {photo_file}: {str(e)}")
+        from telegram import InputMediaPhoto
+
+        media_group = []
+        file_handlers = []
+        try:
+            for file_path in photo_files:
+                f = open(file_path, 'rb')
+                file_handlers.append(f)
+                media_group.append(InputMediaPhoto(media=f))
+            await update.message.reply_media_group(media=media_group)
+        except Exception as e:
+            await update.message.reply_text(f"Failed to send photos: {str(e)}")
+        finally:
+            for f in file_handlers:
+                f.close()
         await uploading_msg.edit_text("Upload complete.")
     elif text == 'ip':
         try:
