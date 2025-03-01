@@ -138,7 +138,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             # Usar '-d' para definir el directorio de descarga.
             gallery_args.extend(["-d", photo_dir, url])
             # Ejecuta gallery-dl en un hilo aparte.
-            await asyncio.to_thread(gallery_main.main, gallery_args)
+            await asyncio.to_thread(gallery_main.run, gallery_args)
         except SystemExit:
             # gallery-dl puede llamar a sys.exit, lo capturamos para continuar.
             pass
