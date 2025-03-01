@@ -3,7 +3,6 @@ import os
 import asyncio
 import yt_dlp
 import hashlib
-import glob
 from dotenv import load_dotenv  # New import
 
 from telegram import Update
@@ -74,10 +73,12 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         ydl_opts['proxy'] = PROXY_URL
 
     if COOKIES_FROM_BROWSER:
+        # Parse the browser cookies specification.
         browser_opts = yt_dlp.parse_options(
             ['--cookies-from-browser', COOKIES_FROM_BROWSER]
         ).ydl_opts
         ydl_opts.update(browser_opts)
+        # Reassign the custom outtmpl to override the browser options.
         ydl_opts['outtmpl'] = outtmpl
     else:
         ydl_opts['cookies'] = ""
@@ -85,24 +86,7 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
-
-    # If the expected file exists and doesn't have a problematic extension, return it.
-    if os.path.exists(filename) and not filename.endswith('.NA'):
-        return filename
-
-    # Otherwise, search for any file that starts with the URL hash.
-    candidates = glob.glob(os.path.join(download_path, f"{url_hash}.*"))
-    # Prefer a file that doesn't have the .NA extension.
-    for candidate in candidates:
-        if not candidate.endswith('.NA'):
-            return candidate
-
-    # As a fallback, if only .NA files were found, return the first one.
-    if candidates:
-        return candidates[0]
-
-    # If no file is found, raise an error.
-    raise FileNotFoundError(f"Could not find downloaded file for URL {url}")
+    return filename
 
 def split_file(file_path, chunk_size_bytes=45 * 1024 * 1024) -> list:
     """
@@ -190,17 +174,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         except Exception as e:
             await update.message.reply_text("Failed to send video: " + str(e))
 
-# New handler for photo messages.
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    photo = update.message.photo[-1]  # highest resolution
-    file = await context.bot.get_file(photo.file_id)
-    photo_path = os.path.join(CACHE_DIR, f"{photo.file_unique_id}.jpg")
-    await file.download(custom_path=photo_path)
-    # Respond by sending the photo back to the user.
-    with open(photo_path, 'rb') as photo_file:
-        await update.message.reply_photo(photo=photo_file)
-    os.remove(photo_path)
-
 # Main function to set up and run the bot.
 def main():
     if not TELEGRAM_TOKEN:
@@ -216,7 +189,6 @@ def main():
     # Register command and message handlers.
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), echo))
-    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))  # New handler for photos
 
     # Start the bot.
     application.run_polling()
