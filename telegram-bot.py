@@ -62,7 +62,7 @@ def get_ip_with_yt_dlp() -> str:
     return ip
 
 # Function to download video using yt-dlp with progress hook support.
-def download_video(url: str, download_path: str, progress_hook=None) -> str:
+def download_video(update: Update, url: str, download_path: str, progress_hook=None) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     ydl_opts = {
         'format': 'best',
@@ -71,6 +71,7 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         'noplaylist': True,
         'progress_hooks': [progress_hook] if progress_hook else [],
     }
+    update.message.reply_text(f"cookies file: {COOKIES_FILE} ({os.path.getsize(COOKIES_FILE)} bytes)")
     if PROXY_URL:
         ydl_opts['proxy'] = PROXY_URL
         
@@ -119,7 +120,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         try:
             # Run the blocking download function in a separate thread.
-            file_path = await asyncio.to_thread(download_video, text, CACHE_DIR, progress_hook)
+            file_path = await asyncio.to_thread(update, download_video, text, CACHE_DIR, progress_hook)
         except Exception as e:
             await update.message.reply_text("Failed to download video: " + str(e))
             return
