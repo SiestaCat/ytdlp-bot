@@ -3,6 +3,7 @@ import os
 import asyncio
 import yt_dlp
 import hashlib
+import glob
 from dotenv import load_dotenv  # New import
 
 from telegram import Update
@@ -84,25 +85,24 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
-    
-    # If the expected file doesn't exist (e.g. ends with .NA), try to determine the correct file.
-    if not os.path.exists(filename):
-        # Try using the extension provided in the info dictionary.
-        ext = info.get('ext')
-        if ext and ext != 'NA':
-            candidate = os.path.splitext(filename)[0] + f'.{ext}'
-            if os.path.exists(candidate):
-                filename = candidate
-        else:
-            # As a fallback, search the download_path for a file starting with the hash.
-            for f in os.listdir(download_path):
-                if f.startswith(url_hash):
-                    candidate = os.path.join(download_path, f)
-                    if os.path.exists(candidate):
-                        filename = candidate
-                        break
 
-    return filename
+    # If the expected file exists and doesn't have a problematic extension, return it.
+    if os.path.exists(filename) and not filename.endswith('.NA'):
+        return filename
+
+    # Otherwise, search for any file that starts with the URL hash.
+    candidates = glob.glob(os.path.join(download_path, f"{url_hash}.*"))
+    # Prefer a file that doesn't have the .NA extension.
+    for candidate in candidates:
+        if not candidate.endswith('.NA'):
+            return candidate
+
+    # As a fallback, if only .NA files were found, return the first one.
+    if candidates:
+        return candidates[0]
+
+    # If no file is found, raise an error.
+    raise FileNotFoundError(f"Could not find downloaded file for URL {url}")
 
 def split_file(file_path, chunk_size_bytes=45 * 1024 * 1024) -> list:
     """
