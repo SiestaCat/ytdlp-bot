@@ -43,6 +43,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Function to get IP using yt-dlp (to test proxy)
+def get_ip_with_yt_dlp() -> str:
+    ip_tmp = os.path.join(CACHE_DIR, "ip.txt")
+    ydl_opts = {
+        'format': 'best',
+        'proxy': PROXY_URL,
+        'noplaylist': True,
+        'outtmpl': ip_tmp,
+        'quiet': True,
+        'force_generic_extractor': True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([GET_IP_URL])
+    with open(ip_tmp, 'r') as f:
+        ip = f.read().strip()
+    os.remove(ip_tmp)
+    return ip
+
 # Function to download video using yt-dlp with progress hook support.
 def download_video(url: str, download_path: str, progress_hook=None) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
@@ -71,10 +89,9 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text
     if text == 'ip':
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(GET_IP_URL) as response:
-                    ip_address = await response.text()
-            await update.message.reply_text(f"Your IP address is: {ip_address.strip()}")
+            # Run the blocking yt-dlp IP retrieval function in a separate thread.
+            ip_address = await asyncio.to_thread(get_ip_with_yt_dlp)
+            await update.message.reply_text(f"Your IP address is: {ip_address}")
         except Exception as e:
             await update.message.reply_text("Failed to retrieve IP: " + str(e))
     elif "http" in text:
