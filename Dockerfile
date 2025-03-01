@@ -3,6 +3,8 @@ FROM python:3.9-slim
 # Set the working directory
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y curl ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Copy the requirements file
 COPY requirements.txt .
 
