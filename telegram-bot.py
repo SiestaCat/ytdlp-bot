@@ -154,11 +154,13 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("Failed to download photo gallery: " + str(e))
             return
 
-        # Listar los archivos descargados en la carpeta de fotos.
-        photo_files = [
-            f for f in os.listdir(photo_dir)
-            if os.path.isfile(os.path.join(photo_dir, f))
-        ]
+        # Recorrer recursivamente photo_dir para obtener todos los archivos (fotos)
+        photo_files = []
+        for root, dirs, files in os.walk(photo_dir):
+            for file in files:
+                full_path = os.path.join(root, file)
+                photo_files.append(full_path)
+        
         if not photo_files:
             await update.message.reply_text("No photos were found in the gallery.")
             return
