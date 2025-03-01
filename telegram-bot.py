@@ -89,6 +89,25 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         filename = ydl.prepare_filename(info)
     return filename
 
+def split_file(file_path, chunk_size_bytes=45 * 1024 * 1024) -> list:
+    """
+    Splits the file at file_path into chunks of chunk_size_bytes.
+    Returns a list of paths for the split parts.
+    """
+    part_paths = []
+    with open(file_path, 'rb') as f:
+        part = 1
+        while True:
+            chunk = f.read(chunk_size_bytes)
+            if not chunk:
+                break
+            part_file = f"{file_path}.part{part}"
+            with open(part_file, 'wb') as pf:
+                pf.write(chunk)
+            part_paths.append(part_file)
+            part += 1
+    return part_paths
+
 # /start command handler.
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text('Welcome! Send me a message or a video link.')
@@ -137,10 +156,22 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         # Notify the user that uploading is starting.
         uploading_msg = await update.message.reply_text("Uploading video, please wait...")
         try:
-            # Open the downloaded file and send it as a video.
-            with open(file_path, 'rb') as video_file:
-                await update.message.reply_video(video=video_file)
-            await uploading_msg.edit_text("Upload complete.")
+            file_size = os.path.getsize(file_path)
+            max_size = 45 * 1024 * 1024  # 45MB
+            if file_size > max_size:
+                parts = split_file(file_path, max_size)
+                total_parts = len(parts)
+                for idx, part in enumerate(parts, start=1):
+                    with open(part, 'rb') as video_file:
+                        await update.message.reply_video(video=video_file, caption=f'Part {idx} of {total_parts}')
+                    os.remove(part)
+                os.remove(file_path)  # Remove original file if needed.
+                await uploading_msg.edit_text("Upload complete in parts.")
+            else:
+                with open(file_path, 'rb') as video_file:
+                    await update.message.reply_video(video=video_file)
+                os.remove(file_path)
+                await uploading_msg.edit_text("Upload complete.")
         except Exception as e:
             await update.message.reply_text("Failed to send video: " + str(e))
 
