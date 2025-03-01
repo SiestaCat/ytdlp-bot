@@ -81,6 +81,8 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         ydl_opts.update(browser_opts)
         # Reassign the custom outtmpl to override the browser options.
         ydl_opts['outtmpl'] = outtmpl
+    else:
+        ydl_opts['cookies'] = ""
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
