@@ -14,6 +14,7 @@ load_dotenv()  # New line
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # New token retrieval
 PROXY_URL = os.getenv("PROXY_URL")
 GET_IP_URL = os.getenv("GET_IP_URL")
+COOKIES_FROM_BROWSER = os.getenv("COOKIES_FROM_BROWSER")
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 
@@ -22,6 +23,9 @@ if not os.path.exists(CACHE_DIR):
 
 if not GET_IP_URL:
     GET_IP_URL = "https://wtfismyip.com/text"
+
+if not COOKIES_FROM_BROWSER:
+    COOKIES_FROM_BROWSER = ""
 
 COOKIES_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cookies.txt')
 
@@ -66,14 +70,23 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     ydl_opts = {
         'format': 'best',
-        'cookies': COOKIES_FILE,
         'outtmpl': os.path.join(download_path, f'{url_hash}.%(ext)s'),
         'noplaylist': True,
         'progress_hooks': [progress_hook] if progress_hook else [],
     }
+
     if PROXY_URL:
         ydl_opts['proxy'] = PROXY_URL
-        
+
+    if COOKIES_FROM_BROWSER:
+        # Parse the browser cookies specification.
+        browser_opts = yt_dlp.parse_options(
+            ['--cookies-from-browser', COOKIES_FROM_BROWSER]
+        ).ydl_opts
+        ydl_opts.update(browser_opts)
+    else:
+        ydl_opts['cookies'] = COOKIES_FILE
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
