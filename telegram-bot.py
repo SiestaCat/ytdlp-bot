@@ -66,7 +66,6 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     ydl_opts = {
         'format': 'best',
-        'cache-dir': CACHE_DIR,
         'cookies': COOKIES_FILE,
         'outtmpl': os.path.join(download_path, f'{url_hash}.%(ext)s'),
         'noplaylist': True,
