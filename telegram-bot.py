@@ -199,7 +199,7 @@ def main():
         return
 
     if custom_request_available:
-        req = Request(con_pool_size=8, read_timeout=300)
+        req = Request(con_pool_size=8, read_timeout=1800)
         application = ApplicationBuilder().token(TELEGRAM_TOKEN).request(req).build()
     else:
         application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
