@@ -68,9 +68,10 @@ def get_ip_with_yt_dlp() -> str:
 # Function to download video using yt-dlp with progress hook support.
 def download_video(url: str, download_path: str, progress_hook=None) -> str:
     url_hash = hashlib.sha256(url.encode()).hexdigest()
+    outtmpl = os.path.join(download_path, f'{url_hash}.%(ext)s')
     ydl_opts = {
         'format': 'best',
-        'outtmpl': os.path.join(download_path, f'{url_hash}.%(ext)s'),
+        'outtmpl': outtmpl,
         'noplaylist': True,
         'progress_hooks': [progress_hook] if progress_hook else [],
     }
@@ -84,6 +85,8 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
             ['--cookies-from-browser', COOKIES_FROM_BROWSER]
         ).ydl_opts
         ydl_opts.update(browser_opts)
+        # Reassign the custom outtmpl to override the browser options.
+        ydl_opts['outtmpl'] = outtmpl
     else:
         ydl_opts['cookies'] = COOKIES_FILE
 
