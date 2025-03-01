@@ -73,12 +73,10 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         ydl_opts['proxy'] = PROXY_URL
 
     if COOKIES_FROM_BROWSER:
-        # Parse the browser cookies specification.
         browser_opts = yt_dlp.parse_options(
             ['--cookies-from-browser', COOKIES_FROM_BROWSER]
         ).ydl_opts
         ydl_opts.update(browser_opts)
-        # Reassign the custom outtmpl to override the browser options.
         ydl_opts['outtmpl'] = outtmpl
     else:
         ydl_opts['cookies'] = ""
@@ -87,11 +85,22 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
     
-    # Check if the file was saved with an unknown extension (“.NA”) and look for a fallback.
-    if not os.path.exists(filename) and filename.endswith('.NA'):
-        alt_filename = filename[:-3] + 'jpg'  # fallback to .jpg
-        if os.path.exists(alt_filename):
-            filename = alt_filename
+    # If the expected file doesn't exist (e.g. ends with .NA), try to determine the correct file.
+    if not os.path.exists(filename):
+        # Try using the extension provided in the info dictionary.
+        ext = info.get('ext')
+        if ext and ext != 'NA':
+            candidate = os.path.splitext(filename)[0] + f'.{ext}'
+            if os.path.exists(candidate):
+                filename = candidate
+        else:
+            # As a fallback, search the download_path for a file starting with the hash.
+            for f in os.listdir(download_path):
+                if f.startswith(url_hash):
+                    candidate = os.path.join(download_path, f)
+                    if os.path.exists(candidate):
+                        filename = candidate
+                        break
 
     return filename
 
