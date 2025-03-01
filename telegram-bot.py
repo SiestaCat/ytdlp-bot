@@ -71,7 +71,6 @@ def download_video(update: Update, url: str, download_path: str, progress_hook=N
         'noplaylist': True,
         'progress_hooks': [progress_hook] if progress_hook else [],
     }
-    update.message.reply_text(f"cookies file: {COOKIES_FILE} ({os.path.getsize(COOKIES_FILE)} bytes)")
     if PROXY_URL:
         ydl_opts['proxy'] = PROXY_URL
         
