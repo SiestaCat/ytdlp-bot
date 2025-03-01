@@ -5,8 +5,8 @@ import yt_dlp
 import hashlib
 from dotenv import load_dotenv  # New import
 
-# Se importa gallery-dl como librería para usarlo directamente.
-from gallery_dl import job
+# Importar la función principal del CLI de gallery-dl.
+from gallery_dl import commandline
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
@@ -131,14 +131,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         os.makedirs(photo_dir, exist_ok=True)
         progress_msg = await update.message.reply_text("Downloading photo gallery, please wait...")
         try:
-            # Construir argumentos para gallery-dl incluyendo COOKIES_FROM_BROWSER si está definido.
+            # Construir argumentos para gallery-dl, incluyendo COOKIES_FROM_BROWSER si está definido.
             gallery_args = []
             if COOKIES_FROM_BROWSER:
                 gallery_args.extend(["--cookies-from-browser", COOKIES_FROM_BROWSER])
             # Usar '-d' para definir el directorio de descarga.
             gallery_args.extend(["-d", photo_dir, url])
-            # Ejecuta gallery-dl en un hilo aparte utilizando la clase Job.
-            await asyncio.to_thread(lambda: job.Job(gallery_args).run())
+            # Ejecuta gallery-dl usando su función commandline.main en un hilo aparte.
+            await asyncio.to_thread(commandline.main, gallery_args)
         except SystemExit:
             # gallery-dl puede llamar a sys.exit, lo capturamos para continuar.
             pass
