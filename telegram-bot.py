@@ -3,7 +3,6 @@ import os
 import asyncio
 import yt_dlp
 import hashlib
-import aiohttp
 from dotenv import load_dotenv  # New import
 
 from telegram import Update
