@@ -27,12 +27,6 @@ if not GET_IP_URL:
 if not COOKIES_FROM_BROWSER:
     COOKIES_FROM_BROWSER = ""
 
-COOKIES_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cookies.txt')
-
-if not os.path.exists(COOKIES_FILE):
-    with open(COOKIES_FILE, 'w') as f:
-        f.write("")
-
 # Attempt to import Request for custom timeout configuration.
 try:
     from telegram.request import Request
@@ -87,8 +81,6 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
         ydl_opts.update(browser_opts)
         # Reassign the custom outtmpl to override the browser options.
         ydl_opts['outtmpl'] = outtmpl
-    else:
-        ydl_opts['cookies'] = COOKIES_FILE
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
