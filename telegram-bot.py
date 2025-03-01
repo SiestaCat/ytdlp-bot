@@ -86,6 +86,13 @@ def download_video(url: str, download_path: str, progress_hook=None) -> str:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
+    
+    # Check if the file was saved with an unknown extension (“.NA”) and look for a fallback.
+    if not os.path.exists(filename) and filename.endswith('.NA'):
+        alt_filename = filename[:-3] + 'jpg'  # fallback to .jpg
+        if os.path.exists(alt_filename):
+            filename = alt_filename
+
     return filename
 
 def split_file(file_path, chunk_size_bytes=45 * 1024 * 1024) -> list:
@@ -174,6 +181,17 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         except Exception as e:
             await update.message.reply_text("Failed to send video: " + str(e))
 
+# New handler for photo messages.
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    photo = update.message.photo[-1]  # highest resolution
+    file = await context.bot.get_file(photo.file_id)
+    photo_path = os.path.join(CACHE_DIR, f"{photo.file_unique_id}.jpg")
+    await file.download(custom_path=photo_path)
+    # Respond by sending the photo back to the user.
+    with open(photo_path, 'rb') as photo_file:
+        await update.message.reply_photo(photo=photo_file)
+    os.remove(photo_path)
+
 # Main function to set up and run the bot.
 def main():
     if not TELEGRAM_TOKEN:
@@ -181,7 +199,6 @@ def main():
         return
 
     if custom_request_available:
-        # Create a custom Request with a longer read timeout (in seconds).
         req = Request(con_pool_size=8, read_timeout=300)
         application = ApplicationBuilder().token(TELEGRAM_TOKEN).request(req).build()
     else:
@@ -190,6 +207,7 @@ def main():
     # Register command and message handlers.
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), echo))
+    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))  # New handler for photos
 
     # Start the bot.
     application.run_polling()
