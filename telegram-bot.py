@@ -1,12 +1,11 @@
 import logging
 import os
+import sys
+import runpy
 import asyncio
 import yt_dlp
 import hashlib
 from dotenv import load_dotenv  # New import
-
-# Importar la función principal del CLI de gallery-dl.
-from gallery_dl import commandline
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
@@ -42,6 +41,15 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Función auxiliar para ejecutar gallery-dl usando runpy.
+def run_gallery_dl(args):
+    old_argv = sys.argv[:]
+    sys.argv = ["gallery-dl"] + args
+    try:
+        runpy.run_module("gallery_dl.__main__", run_name="__main__")
+    finally:
+        sys.argv = old_argv
 
 # Function to get IP using yt-dlp (to test proxy)
 def get_ip_with_yt_dlp() -> str:
@@ -137,10 +145,10 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 gallery_args.extend(["--cookies-from-browser", COOKIES_FROM_BROWSER])
             # Usar '-d' para definir el directorio de descarga.
             gallery_args.extend(["-d", photo_dir, url])
-            # Ejecuta gallery-dl usando su función commandline.main en un hilo aparte.
-            await asyncio.to_thread(commandline.main, gallery_args)
+            # Ejecutar gallery-dl en un hilo aparte usando la función run_gallery_dl.
+            await asyncio.to_thread(run_gallery_dl, gallery_args)
         except SystemExit:
-            # gallery-dl puede llamar a sys.exit, lo capturamos para continuar.
+            # gallery-dl puede llamar a sys.exit; se captura para continuar.
             pass
         except Exception as e:
             await update.message.reply_text("Failed to download photo gallery: " + str(e))
