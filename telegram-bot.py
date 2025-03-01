@@ -5,6 +5,9 @@ import yt_dlp
 import hashlib
 from dotenv import load_dotenv  # New import
 
+# Se importa gallery-dl como librería para usarlo directamente.
+import gallery_dl.__main__ as gallery_main
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -109,12 +112,55 @@ def split_file(file_path, chunk_size_bytes=45 * 1024 * 1024) -> list:
 
 # /start command handler.
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text('Welcome! Send me a message or a video link.')
+    welcome_msg = (
+        "Welcome! By default the bot downloads video links using yt-dlp.\n"
+        "To download a photo gallery, prefix your URL with 'photo '. For example:\n"
+        "photo https://www.example.com"
+    )
+    await update.message.reply_text(welcome_msg)
 
-# Message handler: responds to video links by downloading and uploading the video.
+# Message handler: responde tanto a enlaces de video como a galerías de fotos.
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = update.message.text
-    if text == 'ip':
+    text = update.message.text.strip()
+    # Rama para descarga de galería de fotos si el mensaje inicia con "photo "
+    if text.lower().startswith("photo "):
+        url = text[6:].strip()  # Se remueve el prefijo "photo "
+        # Calcular hash de la URL para usarlo como subcarpeta en cache.
+        photo_hash = hashlib.sha256(url.encode()).hexdigest()
+        photo_dir = os.path.join(CACHE_DIR, photo_hash)
+        os.makedirs(photo_dir, exist_ok=True)
+        progress_msg = await update.message.reply_text("Downloading photo gallery, please wait...")
+        try:
+            # Ejecuta gallery-dl en un hilo aparte.
+            # Se usa la opción "-o" para definir el directorio de salida.
+            await asyncio.to_thread(gallery_main.main, ["-o", photo_dir, url])
+        except SystemExit:
+            # gallery-dl puede llamar a sys.exit, lo capturamos para continuar.
+            pass
+        except Exception as e:
+            await update.message.reply_text("Failed to download photo gallery: " + str(e))
+            return
+
+        # Listar los archivos descargados en la carpeta de fotos.
+        photo_files = [
+            f for f in os.listdir(photo_dir)
+            if os.path.isfile(os.path.join(photo_dir, f))
+        ]
+        if not photo_files:
+            await update.message.reply_text("No photos were found in the gallery.")
+            return
+
+        uploading_msg = await update.message.reply_text("Uploading photos, please wait...")
+        # Enviar cada foto al usuario.
+        for photo_file in photo_files:
+            file_path = os.path.join(photo_dir, photo_file)
+            try:
+                with open(file_path, 'rb') as photo:
+                    await update.message.reply_photo(photo=photo)
+            except Exception as e:
+                await update.message.reply_text(f"Failed to send photo {photo_file}: {str(e)}")
+        await uploading_msg.edit_text("Upload complete.")
+    elif text == 'ip':
         try:
             # Run the blocking yt-dlp IP retrieval function in a separate thread.
             ip_address = await asyncio.to_thread(get_ip_with_yt_dlp)
@@ -122,11 +168,11 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         except Exception as e:
             await update.message.reply_text("Failed to retrieve IP: " + str(e))
     elif "http" in text:
-        # Create a message for download progress updates.
+        # Rama para descarga de videos con yt-dlp.
         progress_msg = await update.message.reply_text("Downloading video: 0%")
         loop = asyncio.get_running_loop()
 
-        # Define the progress hook for yt-dlp.
+        # Define the progress hook para yt-dlp.
         def progress_hook(d):
             status = d.get('status')
             if status == 'downloading':
@@ -134,7 +180,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 if total_bytes:
                     downloaded = d.get('downloaded_bytes', 0)
                     percent = downloaded / total_bytes * 100
-                    # Update the progress message from the thread.
+                    # Actualiza el mensaje de progreso desde el hilo.
                     asyncio.run_coroutine_threadsafe(
                         progress_msg.edit_text(f"Downloading video: {percent:.1f}%"),
                         loop
@@ -146,13 +192,13 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 )
 
         try:
-            # Run the blocking download function in a separate thread.
+            # Ejecuta la función de descarga en un hilo aparte.
             file_path = await asyncio.to_thread(download_video, text, CACHE_DIR, progress_hook)
         except Exception as e:
             await update.message.reply_text("Failed to download video: " + str(e))
             return
 
-        # Notify the user that uploading is starting.
+        # Notificar al usuario que se inicia la carga.
         uploading_msg = await update.message.reply_text("Uploading video, please wait...")
         try:
             file_size = os.path.getsize(file_path)
@@ -164,7 +210,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     with open(part, 'rb') as video_file:
                         await update.message.reply_video(video=video_file, caption=f'Part {idx} of {total_parts}')
                     os.remove(part)
-                os.remove(file_path)  # Remove original file if needed.
+                os.remove(file_path)  # Remover archivo original si es necesario.
                 await uploading_msg.edit_text("Upload complete in parts.")
             else:
                 with open(file_path, 'rb') as video_file:
@@ -181,6 +227,7 @@ def main():
         return
 
     if custom_request_available:
+        from telegram.request import Request
         req = Request(con_pool_size=8, read_timeout=1800)
         application = ApplicationBuilder().token(TELEGRAM_TOKEN).request(req).build()
     else:
