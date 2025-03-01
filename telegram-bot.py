@@ -154,12 +154,15 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("Failed to download photo gallery: " + str(e))
             return
 
-        # Recorrer recursivamente photo_dir para obtener todos los archivos (fotos)
+        # Recorrer recursivamente photo_dir para obtener únicamente archivos con extensiones de imagen conocidas
         photo_files = []
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
         for root, dirs, files in os.walk(photo_dir):
             for file in files:
-                full_path = os.path.join(root, file)
-                photo_files.append(full_path)
+                ext = os.path.splitext(file)[1].lower()
+                if ext in allowed_extensions:
+                    full_path = os.path.join(root, file)
+                    photo_files.append(full_path)
         
         if not photo_files:
             await update.message.reply_text("No photos were found in the gallery.")
