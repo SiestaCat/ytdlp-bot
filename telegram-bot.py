@@ -178,9 +178,17 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     f = open(file_path, 'rb')
                     file_handlers.append(f)
                     media_group.append(InputMediaPhoto(media=f))
-                await update.message.reply_media_group(media=media_group)
-            except Exception as e:
-                await update.message.reply_text(f"Failed to send photos: {str(e)}")
+                try:
+                    await update.message.reply_media_group(media=media_group)
+                except Exception as e:
+                    error_str = str(e)
+                    # If the error indicates an image processing failure, try sending photos individually.
+                    if "image_process_failed" in error_str:
+                        for file_path in group:
+                            with open(file_path, 'rb') as photo_file:
+                                await update.message.reply_photo(photo=photo_file)
+                    else:
+                        await update.message.reply_text(f"Failed to send photos: {error_str}")
             finally:
                 for f in file_handlers:
                     f.close()
